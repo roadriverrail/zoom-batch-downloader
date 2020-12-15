@@ -1,3 +1,4 @@
+import os
 import requests 
 import datetime
 
@@ -60,22 +61,33 @@ def get_recording(start_date, next_date):
 	# print(data['to'])
 
 	for meeting in data['meetings']:
+		os.mkdir('{}{}'.format(PATH, meeting['id']))
 		for record in meeting['recording_files']:
-			if record['status'] != 'completed':
+			if 'status' in record and record['status'] != 'completed':
 				continue
 
 			download_recording(
 				record['download_url'], 
-				record['recording_start'].replace(':','-')
+				record['recording_start'].replace(':','-'),
+				record['file_type'],
+				meeting['id']
 			)
 
 
-def download_recording(download_url, filename):
+def download_recording(download_url, filename, filetype, meeting_id):
 	print(download_url)
 	download_access_url = '{}?access_token={}'.format(download_url, JWT)
 	print(download_access_url)
 	response = requests.get(download_access_url, stream=True)
-	local_filename = '{}{}.mp4'.format(PATH, filename)
+	suffix = filetype
+	if filetype == 'CC' or filetype == 'TRANSCRIPT' or filetype == '':
+		suffix = 'VTT'
+	elif filetype == 'CHAT':
+		suffix = 'TXT'
+	elif filetype == 'TIMELINE':
+		suffix = 'JSON'
+	suffix = suffix.lower()
+	local_filename = '{}/{}/{}_{}.{}'.format(PATH, meeting_id, filename, filetype, suffix)
 
 	with open(local_filename, 'wb') as f:
 		for chunk in response.iter_content(chunk_size=8192):
